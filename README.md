@@ -1,9 +1,9 @@
 # Contribution 1: [Feature] Make the top bar of the desktop client black in darkmode (Windows)
 
 **Contribution Number:** 1  
-**Student:** Danny  
+**Student:** Danny Abraham  
 **Issue:** [https://github.com/session-foundation/session-desktop/issues/501](https://github.com/session-foundation/session-desktop/issues/501)  
-**Status:** Phase I Complete
+**Status:** Phase II In Progress
 
 ---
 
@@ -18,143 +18,66 @@ This issue aligns closely with my frontend and JavaScript/TypeScript goals. It p
 ## Understanding the Issue
 
 ### Problem Description
-
-[In your own words, what's broken or missing?]
+On Windows operating systems, when the Session application is switched into Dark Mode, the native OS top window bar (title frame/window chrome) remains white or a light default system color. This creates a harsh visual contrast against the app's clean, dark theme.
 
 ### Expected Behavior
-
-[What should happen?]
+When the desktop application is running in dark mode on a Windows machine, the title bar/top window frame should automatically change its background color to black or an ultra-dark grey to match the internal visual theme.
 
 ### Current Behavior
-
-[What actually happens?]
+The internal layout of the app changes themes correctly, but the top frame/native title bar on Windows stays light-colored, disregarding the dark mode setting.
 
 ### Affected Components
-
-[Which parts of the codebase are involved?]
+* `src/main.ts` (or the core file initialization script handling `new BrowserWindow()`)
+* Native Window configuration and theme initialization modules.
+* Settings/Theme listeners tracking dark mode changes.
 
 ---
 
 ## Reproduction Process
 
 ### Environment Setup
+I set up the repository locally running Node.js and npm according to the instructions in the project root. Node dependencies installed smoothly via `npm install`.
 
-[Notes on setting up your local development environment - challenges you faced, how you solved them]
+**Working branch:** [https://github.com/DannyAbraham/session-desktop/tree/fix-issue-501](https://github.com/DannyAbraham/session-desktop/tree/fix-issue-501)
 
 ### Steps to Reproduce
-
-1. [Step 1]
-2. [Step 2]
-3. [Observed result]
+1. Run the application locally in a Windows environment using `npm start`.
+2. Open the application settings dashboard.
+3. Toggle the internal user interface theme to "Dark Mode".
+4. **Observed Result:** The app UI darkens completely, but the top operating system title window frame remains highly contrasted bright white.
 
 ### Reproduction Evidence
-
-- **Commit showing reproduction:** [Link to commit in your fork]
-- **Screenshots/logs:** [If applicable]
-- **My findings:** [What you discovered during reproduction]
+- **Commit showing reproduction:** [Placeholder: Link to your branch commit once environment runs]
+- **My findings:** Traced the issue to the Main Process configuration file where the Electron app initializes its primary window context. The settings lack explicit instructions on how to handle the `titleBarOverlay` colors when drawing window boundaries on Win32 systems.
 
 ---
 
 ## Solution Approach
 
 ### Analysis
-
-[Your analysis of the root cause - what's causing the issue?]
+The root cause is that the `BrowserWindow` instance does not explicitly map theme preferences to Windows’ native title bar overlays. Since Electron was recently upgraded in this project, we can now use the modern `titleBarOverlay` properties or standard background color definitions within the initialization constructor to update native borders seamlessly.
 
 ### Proposed Solution
-
-[High-level description of your fix approach]
+Modify the window instantiation process to listen to theme configuration events, passing dynamic color preferences directly to Electron's title bar controller logic on Windows instances.
 
 ### Implementation Plan
 
-Using UMPIRE framework (adapted):
+Using UMPIRE framework:
 
-**Understand:** [Restate the problem]
+**Understand:** Adjust the native app frame bar on Windows instances to match the user's active application theme programmatically.
 
-**Match:** [What similar patterns/solutions exist in the codebase?]
+**Match:** Look at how configuration variables or user settings are imported during the bootstrap initialization lifecycle in `src/main.ts`.
 
-**Plan:** [Step-by-step implementation plan]
-1. [Modify file X to do Y]
-2. [Add function Z]
-3. [Update tests]
+**Plan:**
+1. Locate the core `BrowserWindow` instantiation inside the application main process directory.
+2. In the configuration block, configure `titleBarStyle: 'hidden'` or implement `titleBarOverlay` settings specifically for Windows platforms.
+3. Hook a theme changes event listener to trigger color adaptations dynamically (`titleBarOverlay.color = '#000000'`) when the application dark mode state updates.
+4. Run cross-platform checks to verify that modifications do not interfere with macOS or Linux window configurations.
 
-**Implement:** [Link to your branch/commits as you work]
+**Implement:** [Link to branch commits will go here during Phase III]
 
-**Review:** [Self-review checklist - does it follow the project's contribution guidelines?]
+**Review:** Ensure that naming parameters match the established project standard and that no architectural linter exceptions are thrown.
 
-**Evaluate:** [How will you verify it works?]
-
----
-
-## Testing Strategy
-
-### Unit Tests
-
-- [ ] Test case 1: [Description]
-- [ ] Test case 2: [Description]
-- [ ] Test case 3: [Description]
-
-### Integration Tests
-
-- [ ] Integration scenario 1
-- [ ] Integration scenario 2
-
-### Manual Testing
-
-[What you tested manually and results]
+**Evaluate:** Manually verify changing themes on a Windows machine updates the title bar colors instantly, and ensure existing automated build tests pass.
 
 ---
-
-## Implementation Notes
-
-### Week [X] Progress
-
-[What you built this week, challenges faced, decisions made]
-
-### Week [Y] Progress
-
-[Continue documenting as you work]
-
-### Code Changes
-
-- **Files modified:** [List]
-- **Key commits:** [Links to important commits]
-- **Approach decisions:** [Why you chose certain approaches]
-
----
-
-## Pull Request
-
-**PR Link:** [GitHub PR URL when submitted]
-
-**PR Description:** [Draft or final PR description - much of the content above can be adapted]
-
-**Maintainer Feedback:**
-- [Date]: [Summary of feedback received]
-- [Date]: [How you addressed it]
-
-**Status:** [Awaiting review / Iterating / Approved / Merged]
-
----
-
-## Learnings & Reflections
-
-### Technical Skills Gained
-
-[What you learned technically]
-
-### Challenges Overcome
-
-[What was hard and how you solved it]
-
-### What I'd Do Differently Next Time
-
-[Reflection on your process]
-
----
-
-## Resources Used
-
-- [Link to helpful documentation]
-- [Tutorial or Stack Overflow post that helped]
-- [GitHub issues or discussions that helped]
