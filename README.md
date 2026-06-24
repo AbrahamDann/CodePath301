@@ -3,7 +3,7 @@
 **Contribution Number:** 1  
 **Student:** Danny Abraham  
 **Issue:** [#501](https://github.com/session-foundation/session-desktop/issues/501)  
-**Status:** Phase IV — Pull Request Submitted  
+**Status:** Phase IV — Pull Request Close to Submission (Double Checking)  
 **Fork branch:** [AbrahamDann/session-desktop @ feat/dark-titlebar-windows-501](https://github.com/AbrahamDann/session-desktop/tree/feat/dark-titlebar-windows-501)  
 **Pull Request:** _[paste your PR URL here once opened against session-foundation/session-desktop]_
 
