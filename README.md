@@ -2,82 +2,106 @@
 
 **Contribution Number:** 1  
 **Student:** Danny Abraham  
-**Issue:** [https://github.com/session-foundation/session-desktop/issues/501](https://github.com/session-foundation/session-desktop/issues/501)  
-**Status:** Phase II In Progress
+**Issue:** [#501](https://github.com/session-foundation/session-desktop/issues/501)  
+**Status:** Phase IV — Pull Request Submitted  
+**Fork branch:** [AbrahamDann/session-desktop @ feat/dark-titlebar-windows-501](https://github.com/AbrahamDann/session-desktop/tree/feat/dark-titlebar-windows-501)  
+**Pull Request:** _[paste your PR URL here once opened against session-foundation/session-desktop]_
 
 ---
 
 ## Why I Chose This Issue
 
-I chose issue #501, "Make the top bar of the desktop client black in darkmode (Windows)," because it allows me to work directly with desktop application integration using TypeScript and Electron configuration patterns. The issue was recently re-marked as a "good first issue" following a major Electron dependency update, indicating that the maintainers are active, the previous architectural blocks are cleared, and they are seeking a contributor to resolve it. 
+I chose issue #501, "Make the top bar of the desktop client black in darkmode (Windows)," because it let me work directly with desktop application integration using TypeScript and Electron's main-process APIs. The issue was re-marked as a "good first issue" after a major Electron upgrade, signalling that the earlier architectural blockers were cleared and the maintainers were open to a contributor resolving it.
 
-This issue aligns closely with my frontend and JavaScript/TypeScript goals. It provides a unique engineering challenge: managing cross-platform operating system behaviors and native window frames rather than standard web-app layout code. By implementing this feature, I hope to master Electron's theme state management, window customization APIs (such as `titleBarOverlay` or `titleBarStyle`), and clean codebase navigation.
+It aligned well with my TypeScript/JavaScript goals while offering something a normal web-app layout task wouldn't: reconciling an Electron app's *own* theme with the host operating system's native window chrome on Windows.
 
 ---
 
 ## Understanding the Issue
 
 ### Problem Description
-On Windows operating systems, when the Session application is switched into Dark Mode, the native OS top window bar (title frame/window chrome) remains white or a light default system color. This creates a harsh visual contrast against the app's clean, dark theme.
+On Windows, when Session uses a dark theme, the native OS title bar (window chrome) stays white/light. It only follows the *operating system's* theme, so a user running Windows in light mode sees a bright title bar clashing with Session's dark UI.
 
 ### Expected Behavior
-When the desktop application is running in dark mode on a Windows machine, the title bar/top window frame should automatically change its background color to black or an ultra-dark grey to match the internal visual theme.
+When a dark Session theme is active, the native Windows title bar should be dark to match — and switch back to light for light themes.
 
 ### Current Behavior
-The internal layout of the app changes themes correctly, but the top frame/native title bar on Windows stays light-colored, disregarding the dark mode setting.
+The in-app UI themes correctly, but the native title bar ignores the in-app theme and tracks the OS theme instead.
 
-### Affected Components
-* `src/main.ts` (or the core file initialization script handling `new BrowserWindow()`)
-* Native Window configuration and theme initialization modules.
-* Settings/Theme listeners tracking dark mode changes.
+### Affected Components (actual)
+* `ts/mains/main_node.ts` — Electron main process; creates the `BrowserWindow` and already handles `nativeTheme`.
+* `ts/themes/switchTheme.tsx` — renderer-side theme switching logic.
 
 ---
 
 ## Reproduction Process
 
 ### Environment Setup
-I set up the repository locally running Node.js and npm according to the instructions in the project root. Node dependencies installed smoothly via `npm install`.
+Built locally on **Windows 11** with the project's required toolchain:
+- Node.js **24.12.0** (via nvm-windows), **pnpm 10.28.1**, CMake, and Visual Studio 2022 C++ Build Tools.
 
-**Working branch:** [https://github.com/DannyAbraham/session-desktop/tree/fix-issue-501](https://github.com/DannyAbraham/session-desktop/tree/fix-issue-501)
+This was *not* a smooth `pnpm install`. The native module `libsession_util_nodejs` failed to compile because of the Windows 260-character `MAX_PATH` limit — MSBuild's FileTracker threw `FTK1011` on deeply nested build paths. I resolved it by:
+1. Enabling Git + Windows long paths (`core.longpaths`, `LongPathsEnabled`),
+2. Disabling MSBuild's FileTracker (`TrackFileAccess=false`), and
+3. Relocating pnpm's package store to a short path (`npm_config_virtual_store_dir=C:\pn`).
 
 ### Steps to Reproduce
-1. Run the application locally in a Windows environment using `npm start`.
-2. Open the application settings dashboard.
-3. Toggle the internal user interface theme to "Dark Mode".
-4. **Observed Result:** The app UI darkens completely, but the top operating system title window frame remains highly contrasted bright white.
+1. Build and launch the app on Windows: `pnpm build` then `pnpm start-prod`.
+2. Set **Windows itself to Light mode** (Settings → Personalization → Colors).
+3. In Session, open Appearance settings and select a **dark theme** (e.g. Classic Dark).
+4. **Observed Result:** the app UI is dark, but the native title bar stays light/white.
 
 ### Reproduction Evidence
-- **Commit showing reproduction:** [Placeholder: Link to your branch commit once environment runs]
-- **My findings:** Traced the issue to the Main Process configuration file where the Electron app initializes its primary window context. The settings lack explicit instructions on how to handle the `titleBarOverlay` colors when drawing window boundaries on Win32 systems.
+- _[Insert screenshot: dark Session theme with a white Windows title bar]_
+
+### Root-Cause Findings
+Tracing the main process, the app **reads** `nativeTheme.shouldUseDarkColors` (the OS theme) and forwards it to renderers, but it **never sets** `nativeTheme.themeSource`. That property is exactly what tells Windows whether to paint the native frame dark or light. With it unset, Windows defaults to the OS theme regardless of the in-app selection.
 
 ---
 
 ## Solution Approach
 
 ### Analysis
-The root cause is that the `BrowserWindow` instance does not explicitly map theme preferences to Windows’ native title bar overlays. Since Electron was recently upgraded in this project, we can now use the modern `titleBarOverlay` properties or standard background color definitions within the initialization constructor to update native borders seamlessly.
+The minimal, idiomatic fix is to set `nativeTheme.themeSource` to `'dark'` or `'light'` based on the selected Session theme. I deliberately avoided `titleBarStyle: 'hidden'` + `titleBarOverlay`, because that replaces the OS title bar with a custom-drawn one — a much larger, cross-platform-risky change. Setting `themeSource` keeps the native title bar and matches the file's existing `nativeTheme` usage.
 
-### Proposed Solution
-Modify the window instantiation process to listen to theme configuration events, passing dynamic color preferences directly to Electron's title bar controller logic on Windows instances.
+### Implementation (UMPIRE)
 
-### Implementation Plan
+**Understand:** Make the native Windows title bar follow the active Session theme, not the OS theme.
 
-Using UMPIRE framework:
-
-**Understand:** Adjust the native app frame bar on Windows instances to match the user's active application theme programmatically.
-
-**Match:** Look at how configuration variables or user settings are imported during the bootstrap initialization lifecycle in `src/main.ts`.
+**Match:** Followed the existing `nativeTheme` and `ipcMain`/`ipcRenderer` patterns already in `main_node.ts` (e.g. the `get-native-theme` / `native-theme-update` handlers).
 
 **Plan:**
-1. Locate the core `BrowserWindow` instantiation inside the application main process directory.
-2. In the configuration block, configure `titleBarStyle: 'hidden'` or implement `titleBarOverlay` settings specifically for Windows platforms.
-3. Hook a theme changes event listener to trigger color adaptations dynamically (`titleBarOverlay.color = '#000000'`) when the application dark mode state updates.
-4. Run cross-platform checks to verify that modifications do not interfere with macOS or Linux window configurations.
+1. Add a helper in the main process mapping a theme name to `nativeTheme.themeSource` (`*-dark` → `'dark'`, else `'light'`).
+2. Call it on startup from the saved theme (`getThemeFromDb()`), before the `BrowserWindow` is created, so the title bar is correct on first paint.
+3. Add a `set-native-theme` IPC channel so the renderer can update it live.
+4. Send that IPC from `switchThemeTo` whenever the theme changes.
 
-**Implement:** [Link to branch commits will go here during Phase III]
+**Implement:** Commit `103b61320` on `feat/dark-titlebar-windows-501`. Changes (21 insertions across 2 files):
 
-**Review:** Ensure that naming parameters match the established project standard and that no architectural linter exceptions are thrown.
+*Main process — `ts/mains/main_node.ts`:*
+```ts
+function setNativeThemeSource(theme: string) {
+  // 'dark'/'light' tells the OS which colors to use for the native window
+  // frame and title bar. Our theme names end with -dark or -light.
+  nativeTheme.themeSource = theme.endsWith('-dark') ? 'dark' : 'light';
+}
 
-**Evaluate:** Manually verify changing themes on a Windows machine updates the title bar colors instantly, and ensure existing automated build tests pass.
+ipc.on('set-native-theme', (_event, theme: string) => {
+  setNativeThemeSource(theme);
+});
+```
+…and at window creation: `setNativeThemeSource(getThemeFromDb());` before `new BrowserWindow(...)`.
 
----
+*Renderer — `ts/themes/switchTheme.tsx`:*
+```ts
+import { ipcRenderer } from 'electron';
+// inside switchThemeTo, when a new theme is applied:
+ipcRenderer.send('set-native-theme', newTheme);
+```
+
+**Review:** Naming and IPC style match existing handlers; change is isolated to theme/window initialization and touches no unrelated logic.
+
+
+## Reflection / Next Steps
+- Possible follow-up: apply the same `themeSource` handling to the password prompt window so it matches on launch when a password is set.
+- Awaiting maintainer review; will respond to feedback in Phase IV iterations.
